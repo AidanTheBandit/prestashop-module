@@ -1,1 +1,5 @@
 .idea/
+# Release artifacts
+*.zip
+*.sha256
+printful/

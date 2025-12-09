@@ -70,19 +70,25 @@ class Printful extends Module
     const PRINTFUL_PLUGIN_PATH = 'download-plugin/prestashop';
 
     /**
+     * Service registry to cache service instances
+     * @var array
+     */
+    private static $serviceRegistry = array();
+
+    /**
      * Printful constructor.
      */
     public function __construct()
     {
         $this->name = 'printful';
         $this->tab = 'others';
-        $this->version = '2.0';
+        $this->version = '2.1';
         $this->author = 'Printful';
         $this->need_instance = 1;
 
         $this->ps_versions_compliancy = [
             'min' => '1.7.6',
-            'max' => '8.1.3',
+            'max' => '9.99.99',
         ];
         $this->bootstrap = true;
 
@@ -156,13 +162,70 @@ class Printful extends Module
      */
     public static function getService($className)
     {
-        if (class_exists('Adapter_ServiceLocator')) {
-            return Adapter_ServiceLocator::get($className);
-        } elseif (class_exists('PrestaShop\PrestaShop\Adapter\ServiceLocator')) {
-            return PrestaShop\PrestaShop\Adapter\ServiceLocator::get($className);
+        // Check if service is already instantiated in registry
+        if (isset(self::$serviceRegistry[$className])) {
+            return self::$serviceRegistry[$className];
         }
 
-        throw new Exception('No service locator found');
+        // Try legacy ServiceLocator for PrestaShop < 9
+        if (class_exists('Adapter_ServiceLocator')) {
+            $service = Adapter_ServiceLocator::get($className);
+            self::$serviceRegistry[$className] = $service;
+            return $service;
+        } elseif (class_exists('PrestaShop\PrestaShop\Adapter\ServiceLocator')) {
+            $service = PrestaShop\PrestaShop\Adapter\ServiceLocator::get($className);
+            self::$serviceRegistry[$className] = $service;
+            return $service;
+        }
+
+        // Fallback for PrestaShop 9+: manually instantiate services
+        $service = self::createService($className);
+        self::$serviceRegistry[$className] = $service;
+        return $service;
+    }
+
+    /**
+     * Manually create service instances for PrestaShop 9+ compatibility
+     * @param string $className
+     * @return mixed|object
+     * @throws Exception
+     */
+    private static function createService($className)
+    {
+        // Service dependencies are resolved here
+        switch ($className) {
+            case Printful\services\VersionValidatorService::class:
+                return new Printful\services\VersionValidatorService();
+            
+            case Printful\services\InstallService::class:
+                return new Printful\services\InstallService();
+            
+            case Printful\services\UninstallService::class:
+                return new Printful\services\UninstallService();
+            
+            case Printful\PrintfulClient::class:
+                return new Printful\PrintfulClient();
+            
+            case Printful\PrintfulApi::class:
+                $client = self::getService(Printful\PrintfulClient::class);
+                return new Printful\PrintfulApi($client);
+            
+            case Printful\services\WebserviceService::class:
+                $api = self::getService(Printful\PrintfulApi::class);
+                return new Printful\services\WebserviceService($api);
+            
+            case Printful\services\AuthMigrationService::class:
+                $api = self::getService(Printful\PrintfulApi::class);
+                return new Printful\services\AuthMigrationService($api);
+            
+            case Printful\services\ConnectService::class:
+                $webserviceService = self::getService(Printful\services\WebserviceService::class);
+                $authMigrationService = self::getService(Printful\services\AuthMigrationService::class);
+                return new Printful\services\ConnectService($webserviceService, $authMigrationService);
+            
+            default:
+                throw new Exception('Unknown service: ' . $className);
+        }
     }
 
     /**
