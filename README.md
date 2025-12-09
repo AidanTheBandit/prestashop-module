@@ -42,7 +42,9 @@ After installation:
 
 ### Creating a Release
 
-To create a new release:
+There are two ways to create a new release:
+
+#### Method 1: Using Git Tags (Recommended)
 
 1. Update the version number in `printful.php`
 2. Commit your changes
@@ -52,6 +54,21 @@ To create a new release:
    git push origin v2.1
    ```
 4. GitHub Actions will automatically create a release with the module zip file
+
+#### Method 2: Manual Trigger (via GitHub Actions)
+
+1. Update the version number in `printful.php` and commit your changes
+2. Go to the [Actions tab](https://github.com/AidanTheBandit/prestashop-module/actions/workflows/release.yml) in GitHub
+3. Click on "Create Release" workflow
+4. Click "Run workflow" button
+5. Enter the version number (e.g., `2.1.0`) without the `v` prefix
+6. Click "Run workflow"
+7. The workflow will automatically create a tag and release with the module zip file
+
+Both methods will:
+- Create a properly formatted zip file containing the module
+- Generate a SHA256 checksum for verification
+- Create a GitHub release with installation instructions and compatibility information
 
 ### File Structure
 

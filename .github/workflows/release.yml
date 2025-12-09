@@ -5,6 +5,12 @@ on:
     tags:
       - 'v*.*.*'
       - 'v*.*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version number (e.g., 2.1.0)'
+        required: true
+        type: string
 
 jobs:
   build-and-release:
@@ -16,10 +22,35 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       
-      - name: Get tag name
+      - name: Create tag for manual release
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          TAG_NAME="v${{ github.event.inputs.version }}"
+          
+          # Check if tag already exists
+          if git rev-parse "$TAG_NAME" >/dev/null 2>&1; then
+            echo "⚠️ Warning: Tag $TAG_NAME already exists. Using existing tag for release."
+            echo "tag_exists=true" >> $GITHUB_OUTPUT
+          else
+            git tag -a "$TAG_NAME" -m "Release $TAG_NAME"
+            git push origin "$TAG_NAME"
+            echo "✅ Created and pushed tag $TAG_NAME"
+            echo "tag_exists=false" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Get version
         id: tag
-        run: echo "TAG_NAME=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "TAG_NAME=v${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          else
+            echo "TAG_NAME=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          fi
       
       - name: Prepare module directory
         run: |
@@ -52,6 +83,7 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
+          tag_name: ${{ steps.tag.outputs.TAG_NAME }}
           name: Release ${{ steps.tag.outputs.TAG_NAME }}
           body: |
             ## PrestaShop Printful Module ${{ steps.tag.outputs.TAG_NAME }}
