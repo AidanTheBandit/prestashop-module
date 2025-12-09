@@ -76,13 +76,13 @@ class Printful extends Module
     {
         $this->name = 'printful';
         $this->tab = 'others';
-        $this->version = '2.0';
+        $this->version = '2.1';
         $this->author = 'Printful';
         $this->need_instance = 1;
 
         $this->ps_versions_compliancy = [
             'min' => '1.7.6',
-            'max' => '8.1.3',
+            'max' => '9.99.99',
         ];
         $this->bootstrap = true;
 
