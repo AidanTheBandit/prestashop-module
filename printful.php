@@ -156,13 +156,59 @@ class Printful extends Module
      */
     public static function getService($className)
     {
+        // Try legacy ServiceLocator for PrestaShop < 9
         if (class_exists('Adapter_ServiceLocator')) {
             return Adapter_ServiceLocator::get($className);
         } elseif (class_exists('PrestaShop\PrestaShop\Adapter\ServiceLocator')) {
             return PrestaShop\PrestaShop\Adapter\ServiceLocator::get($className);
         }
 
-        throw new Exception('No service locator found');
+        // Fallback for PrestaShop 9+: manually instantiate services
+        return self::createService($className);
+    }
+
+    /**
+     * Manually create service instances for PrestaShop 9+ compatibility
+     * @param string $className
+     * @return mixed|object
+     * @throws Exception
+     */
+    private static function createService($className)
+    {
+        // Service dependencies are resolved here
+        switch ($className) {
+            case Printful\services\VersionValidatorService::class:
+                return new Printful\services\VersionValidatorService();
+            
+            case Printful\services\InstallService::class:
+                return new Printful\services\InstallService();
+            
+            case Printful\services\UninstallService::class:
+                return new Printful\services\UninstallService();
+            
+            case Printful\PrintfulClient::class:
+                return new Printful\PrintfulClient();
+            
+            case Printful\PrintfulApi::class:
+                $client = self::getService(Printful\PrintfulClient::class);
+                return new Printful\PrintfulApi($client);
+            
+            case Printful\services\WebserviceService::class:
+                $api = self::getService(Printful\PrintfulApi::class);
+                return new Printful\services\WebserviceService($api);
+            
+            case Printful\services\AuthMigrationService::class:
+                $api = self::getService(Printful\PrintfulApi::class);
+                return new Printful\services\AuthMigrationService($api);
+            
+            case Printful\services\ConnectService::class:
+                $webserviceService = self::getService(Printful\services\WebserviceService::class);
+                $authMigrationService = self::getService(Printful\services\AuthMigrationService::class);
+                return new Printful\services\ConnectService($webserviceService, $authMigrationService);
+            
+            default:
+                throw new Exception('Unknown service: ' . $className);
+        }
     }
 
     /**
