@@ -1,0 +1,77 @@
+name: Create Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+      - 'v*.*'
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Get tag name
+        id: tag
+        run: echo "TAG_NAME=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+      
+      - name: Prepare module directory
+        run: |
+          mkdir -p printful
+          # Copy all necessary files to printful directory
+          cp -r controllers printful/
+          cp -r src printful/
+          cp -r translations printful/
+          cp -r vendor printful/
+          cp -r views printful/
+          cp printful.php printful/
+          cp index.php printful/
+          cp logo.png printful/
+          cp composer.json printful/
+          cp composer.lock printful/
+          cp LICENSE.txt printful/
+          
+          # Remove any development files
+          find printful -name ".git*" -exec rm -rf {} + 2>/dev/null || true
+          find printful -name ".idea" -exec rm -rf {} + 2>/dev/null || true
+          find printful -name "*.md" -type f -exec rm -f {} + 2>/dev/null || true
+      
+      - name: Create module zip
+        run: |
+          zip -r printful-${{ steps.tag.outputs.TAG_NAME }}.zip printful/
+          
+          # Create a checksum file
+          sha256sum printful-${{ steps.tag.outputs.TAG_NAME }}.zip > printful-${{ steps.tag.outputs.TAG_NAME }}.zip.sha256
+      
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          name: Release ${{ steps.tag.outputs.TAG_NAME }}
+          body: |
+            ## PrestaShop Printful Module ${{ steps.tag.outputs.TAG_NAME }}
+            
+            ### Installation
+            1. Download the `printful-${{ steps.tag.outputs.TAG_NAME }}.zip` file
+            2. In PrestaShop admin panel, go to Modules > Module Manager
+            3. Click "Upload a module" and select the downloaded zip file
+            4. Follow the installation instructions
+            
+            ### Compatibility
+            - PrestaShop 1.7.6 - 9.99.99
+            - PHP 7.1+
+            
+            ### Changelog
+            See the commit history for detailed changes.
+            
+            ### Verification
+            SHA256: See `printful-${{ steps.tag.outputs.TAG_NAME }}.zip.sha256`
+          files: |
+            printful-${{ steps.tag.outputs.TAG_NAME }}.zip
+            printful-${{ steps.tag.outputs.TAG_NAME }}.zip.sha256
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
