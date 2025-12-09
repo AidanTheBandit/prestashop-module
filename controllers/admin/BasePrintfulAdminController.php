@@ -44,8 +44,8 @@ abstract class BasePrintfulAdminController extends ModuleAdminController
         if ($versionData && !$versionData->isValidVersion && $versionData->checkSuccessful) {
             $this->warnings[] = str_replace(
                 '{here}',
-                '<a href="' . Printful::getPluginDownloadUrl() . '" target="_blank">' . $this->l('here') . '</a>',
-                $this->l('Your current Printful module is out of date. Download the latest version {here}!')
+                '<a href="' . Printful::getPluginDownloadUrl() . '" target="_blank">' . $this->module->l('here') . '</a>',
+                $this->module->l('Your current Printful module is out of date. Download the latest version {here}!')
             );
         }
 
