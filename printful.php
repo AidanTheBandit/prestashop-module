@@ -70,6 +70,12 @@ class Printful extends Module
     const PRINTFUL_PLUGIN_PATH = 'download-plugin/prestashop';
 
     /**
+     * Service registry to cache service instances
+     * @var array
+     */
+    private static $serviceRegistry = array();
+
+    /**
      * Printful constructor.
      */
     public function __construct()
@@ -156,15 +162,26 @@ class Printful extends Module
      */
     public static function getService($className)
     {
+        // Check if service is already instantiated in registry
+        if (isset(self::$serviceRegistry[$className])) {
+            return self::$serviceRegistry[$className];
+        }
+
         // Try legacy ServiceLocator for PrestaShop < 9
         if (class_exists('Adapter_ServiceLocator')) {
-            return Adapter_ServiceLocator::get($className);
+            $service = Adapter_ServiceLocator::get($className);
+            self::$serviceRegistry[$className] = $service;
+            return $service;
         } elseif (class_exists('PrestaShop\PrestaShop\Adapter\ServiceLocator')) {
-            return PrestaShop\PrestaShop\Adapter\ServiceLocator::get($className);
+            $service = PrestaShop\PrestaShop\Adapter\ServiceLocator::get($className);
+            self::$serviceRegistry[$className] = $service;
+            return $service;
         }
 
         // Fallback for PrestaShop 9+: manually instantiate services
-        return self::createService($className);
+        $service = self::createService($className);
+        self::$serviceRegistry[$className] = $service;
+        return $service;
     }
 
     /**
