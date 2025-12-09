@@ -34,11 +34,13 @@ jobs:
           
           # Check if tag already exists
           if git rev-parse "$TAG_NAME" >/dev/null 2>&1; then
-            echo "Tag $TAG_NAME already exists"
+            echo "⚠️ Warning: Tag $TAG_NAME already exists. Using existing tag for release."
+            echo "tag_exists=true" >> $GITHUB_OUTPUT
           else
             git tag -a "$TAG_NAME" -m "Release $TAG_NAME"
             git push origin "$TAG_NAME"
-            echo "Created and pushed tag $TAG_NAME"
+            echo "✅ Created and pushed tag $TAG_NAME"
+            echo "tag_exists=false" >> $GITHUB_OUTPUT
           fi
       
       - name: Get version
